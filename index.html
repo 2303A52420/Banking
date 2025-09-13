@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Simple Banking App</title>
+  <style>
+    body { font-family: Arial; margin: 30px; }
+    h2 { color: #2a6; }
+    .account { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; }
+    .notification { color: green; margin-top: 10px; }
+    .error { color: red; }
+    label, select, input, button { margin: 5px 0; display: block; }
+  </style>
+</head>
+<body>
+  <h2>Simple Banking Application</h2>
+
+  <div>
+    <h3>Create Account</h3>
+    <input type="text" id="accountName" placeholder="Account name"/>
+    <button onclick="createAccount()">Create Account</button>
+  </div>
+
+  <hr>
+
+  <div>
+    <h3>Accounts</h3>
+    <div id="accountsContainer"></div>
+  </div>
+
+  <hr>
+
+  <div>
+    <h3>Deposit / Withdraw</h3>
+    <select id="transactionAccount"></select>
+    <input type="number" id="amount" placeholder="Amount"/>
+    <button onclick="deposit()">Deposit</button>
+    <button onclick="withdraw()">Withdraw</button>
+  </div>
+
+  <div>
+    <h3>Transfer</h3>
+    From:
+    <select id="fromAccount"></select>
+    To:
+    <select id="toAccount"></select>
+    <input type="number" id="transferAmount" placeholder="Amount"/>
+    <button onclick="transfer()">Transfer</button>
+  </div>
+
+  <div>
+    <h3>Other Actions</h3>
+    <button onclick="undo()">Undo Last Action</button>
+    <button onclick="applyInterest()">Apply Interest (5%)</button>
+  </div>
+
+  <div class="notification" id="notification"></div>
+
+  <script>
+    let accounts = [];
+    let history = [];
+
+    function updateUI() {
+      const container = document.getElementById('accountsContainer');
+      const selects = [document.getElementById('transactionAccount'), document.getElementById('fromAccount'), document.getElementById('toAccount')];
+      container.innerHTML = '';
+      selects.forEach(select => select.innerHTML = '');
+
+      accounts.forEach(account => {
+        const div = document.createElement('div');
+        div.className = 'account';
+        div.innerHTML = `<strong>${account.name}</strong>: $${account.balance.toFixed(2)}`;
+        container.appendChild(div);
+
+        const option = document.createElement('option');
+        option.value = account.name;
+        option.text = account.name;
+        selects.forEach(select => select.appendChild(option.cloneNode(true)));
+      });
+    }
+
+    function showNotification(message, isError = false) {
+      const note = document.getElementById('notification');
+      note.textContent = message;
+      note.className = isError ? 'notification error' : 'notification';
+      setTimeout(() => { note.textContent = ''; }, 4000);
+    }
+
+    function findAccount(name) {
+      return accounts.find(acc => acc.name === name);
+    }
+
+    function createAccount() {
+      const name = document.getElementById('accountName').value.trim();
+      if (!name || findAccount(name)) {
+        showNotification("Invalid or duplicate account name.", true);
+        return;
+      }
+      accounts.push({ name, balance: 0 });
+      history.push(JSON.stringify(accounts));
+      updateUI();
+      showNotification(`Account "${name}" created.`);
+    }
+
+    function deposit() {
+      const name = document.getElementById('transactionAccount').value;
+      const amount = parseFloat(document.getElementById('amount').value);
+      const acc = findAccount(name);
+      if (acc && amount > 0) {
+        history.push(JSON.stringify(accounts));
+        acc.balance += amount;
+        updateUI();
+        showNotification(`Deposited $${amount} to ${name}`);
+      } else {
+        showNotification("Invalid deposit.", true);
+      }
+    }
+
+    function withdraw() {
+      const name = document.getElementById('transactionAccount').value;
+      const amount = parseFloat(document.getElementById('amount').value);
+      const acc = findAccount(name);
+      if (acc && amount > 0 && acc.balance >= amount) {
+        history.push(JSON.stringify(accounts));
+        acc.balance -= amount;
+        updateUI();
+        showNotification(`Withdrew $${amount} from ${name}`);
+      } else {
+        showNotification("Invalid withdrawal.", true);
+      }
+    }
+
+    function transfer() {
+      const from = document.getElementById('fromAccount').value;
+      const to = document.getElementById('toAccount').value;
+      const amount = parseFloat(document.getElementById('transferAmount').value);
+      if (from === to) {
+        showNotification("Cannot transfer to same account.", true);
+        return;
+      }
+      const accFrom = findAccount(from);
+      const accTo = findAccount(to);
+      if (accFrom && accTo && amount > 0 && accFrom.balance >= amount) {
+        history.push(JSON.stringify(accounts));
+        accFrom.balance -= amount;
+        accTo.balance += amount;
+        updateUI();
+        showNotification(`Transferred $${amount} from ${from} to ${to}`);
+      } else {
+        showNotification("Invalid transfer.", true);
+      }
+    }
+
+    function undo() {
+      if (history.length > 0) {
+        const lastState = history.pop();
+        accounts = JSON.parse(lastState);
+        updateUI();
+        showNotification("Last action undone.");
+      } else {
+        showNotification("No actions to undo.", true);
+      }
+    }
+
+    function applyInterest() {
+      if (accounts.length === 0) {
+        showNotification("No accounts to apply interest.", true);
+        return;
+      }
+      history.push(JSON.stringify(accounts));
+      accounts.forEach(acc => acc.balance *= 1.05);
+      updateUI();
+      showNotification("5% interest applied to all accounts.");
+    }
+
+    updateUI(); // initial load
+  </script>
+</body>
+</html>
